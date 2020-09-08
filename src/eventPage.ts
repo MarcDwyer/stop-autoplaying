@@ -1,4 +1,9 @@
-import { RequestTypes, IsBlacklisted } from "./request_types";
+import {
+  RequestTypes,
+  BlacklistAction,
+  IconAction,
+  BlackResponse,
+} from "./request_types";
 
 // Listen to messages sent from other parts of the extension.
 const blacklist = new Map<string, boolean>();
@@ -12,13 +17,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   console.log(request);
   if ("type" in request && sender.tab && sender.tab.id) {
-    const { url } = request as IsBlacklisted;
     switch (request["type"]) {
       case RequestTypes.blacklist:
+        const blkAction = request as BlacklistAction;
+        const blkResp: BlackResponse = {
+          type: RequestTypes.blacklist,
+          isBlacklisted: blacklist.has(blkAction.url),
+        };
         chrome.tabs.sendMessage(
           sender.tab.id,
-          { blacklisted: blacklist.has(url) },
+          blkResp,
         );
+        break;
+      case RequestTypes.iconChange:
+        const iconAction = request as IconAction;
+        console.log(iconAction);
+        chrome.browserAction.setIcon({
+          path: iconAction.path,
+          tabId: sender.tab.id,
+        });
+        break;
+      default:
+        console.error(`Default case hit: ${request}`);
     }
   }
   return isResponseAsync;
